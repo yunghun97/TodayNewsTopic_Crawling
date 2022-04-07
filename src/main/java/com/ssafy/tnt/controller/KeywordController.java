@@ -1,5 +1,6 @@
 package com.ssafy.tnt.controller;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,8 +36,9 @@ public class KeywordController {
 	}
 	// 최대 10개 조회하기
 	@GetMapping()
-	public ResponseEntity<Set<String>> findKeyword() {
-		return new ResponseEntity<> (keywordService.findKeyword(), HttpStatus.OK);
+	public ResponseEntity<HashMap<String, Double>> findKeyword() {
+		return (ResponseEntity<HashMap<String, Double>>) keywordService.findKeyword();
+//		return new ResponseEntity<>(keywordService.findKeyword(), HttpStatus.OK);
 	}
 	
 	@GetMapping("/test")

@@ -5,11 +5,14 @@ import java.nio.file.FileSystem;
 import java.sql.Clob;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 
@@ -43,9 +46,10 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 	private static final String[] COMPANY_CODES11 = { "032" };
 	private static HashMap<String, Double> IDFMap, resultMap;
 	private static HashMap<String, Boolean> visitMap;
-	private static int newsCount;
-	private static double TFIDFValue = 0.2;
+	private static double newsCount;
+	private static double TFIDFValue = 0.3;
 	
+	private static Set<String> blackListMap = new HashSet<>(Arrays.asList(".net","647","분기","뉴스1","뉴시스",".kr",".co"));		
 	// 서버 상대경로 얻을 때 사용
 	@Autowired
 	private HttpServletRequest request;
@@ -213,7 +217,7 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 		fileWriter.close();
 		return null;
 	}
-	public int komoran() throws IOException 
+	public double komoran() throws IOException 
 	{
 		Komoran komoran = new Komoran(DEFAULT_MODEL.FULL);
 		IDFMap = new HashMap<>();
@@ -251,8 +255,6 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 									}
 								}								
 							}
-//            System.out.format("(%2d, %2d) %s/%s\n", token.getBeginIndex(), token.getEndIndex(), token.getMorph(), token.getPos());
-//        	System.out.println(token.toString());
 						}
 					}
 					String keyword = nounlist.toString();
@@ -260,7 +262,7 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 					keyword=keyword.substring(0,keyword.length()-1).replaceAll(","," ");
 					keyword+="\n";
 					writer.write(keyword);  //형태소 분석					
-					System.out.println(nounlist.toString());
+//					System.out.println(nounlist.toString());
 					nounlist.clear();
 				} catch (Exception e) {
 					continue;
@@ -274,46 +276,26 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 		return newsCount;
 	}	
 	public void getTF() throws IOException {
-		Komoran komoran = new Komoran(DEFAULT_MODEL.FULL);
-		IDFMap = new HashMap<>();
-		resultMap = new HashMap<>();
-		List<String> nounlist = new ArrayList<>();
+		resultMap = new HashMap<>();		
 		String rootPath = FileSystemView.getFileSystemView().getHomeDirectory().toString();
-		String newsPath = "/news/news.txt";
+		String newsPath = "/news/keyword.txt";
 		BufferedReader reader = new BufferedReader(new FileReader(rootPath+newsPath));		
 		String str;
-		HashMap<String, Double> TFMap = new HashMap<>();
-		boolean flag = false;
+		HashMap<String, Double> TFMap = new HashMap<>();		
+		StringTokenizer st;
+		
 		while((str=reader.readLine())!=null){
-			if(str.contains("기사내용")){
-				flag = true;
-				continue;
-			}
-			if(flag&&!str.equals("")){
-				TFMap.clear();
-				KomoranResult analyzeResultList = komoran.analyze(str);
-				try {
-					List<Token> tokenList = analyzeResultList.getTokenList();
-					if(!tokenList.isEmpty()) {
-						for (Token token : tokenList) {
-							if(token.getPos().equals("NNP")||token.getPos().equals("NNG")){
-								nounlist.add(token.getMorph().toString());
-								if(TFMap.containsKey(token.getMorph().toString())) {
-									TFMap.put(token.getMorph().toString(), TFMap.get(token.getMorph().toString())+1);
-								}else{
-									TFMap.put(token.getMorph().toString(),1.0);
-								}								
-							}
-						}
-					}		
-				} catch (Exception e) {
-					continue;
-				}finally {
-					flag=false;
+			st = new StringTokenizer(str);
+			while(st.hasMoreTokens()) {
+				String input = st.nextToken();
+				if(TFMap.containsKey(input)) {
+					TFMap.put(input, TFMap.get(input)+1);
+				}else{
+					TFMap.put(input,1.0);
 				}
-			} 
-			// 해당 문서 탐색이 끝나면
+			}
 			TFIDF(TFMap);
+			TFMap.clear();
 		}
 		IDFMap.clear();
 		TFMap.clear();
@@ -324,6 +306,7 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 	
 	@Override
 	public void insertKeyWord() throws IOException {
+		System.out.println("진입");
 		String rootPath = FileSystemView.getFileSystemView().getHomeDirectory().toString();
 		String basePath = "/news/newsTDIDF.txt";
 		FileWriter fileWriter = new FileWriter(rootPath+basePath);
@@ -339,12 +322,15 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 	}
 	
 	@Override
-	public void TFIDF(HashMap<String, Double> tmpTFMap) throws IOException {		
+	public void TFIDF(HashMap<String, Double> tmpTFMap) throws IOException {			
 		for(Map.Entry<String, Double> map :  tmpTFMap.entrySet()) {
 			double TF = map.getValue() / tmpTFMap.size();
+			if(IDFMap.get(map.getKey())==null) continue;
 			double IDF = Math.log(newsCount/IDFMap.get(map.getKey()));
-			double TFIDF = TF * IDF;
+			double TFIDF = TF * IDF;			
+			System.out.println("TFIDF 값 : "+TFIDF);
 			if(TFIDF<TFIDFValue) continue; // TFIDF 조건 넘어갈 시 continue
+			if(blackListMap.contains(map.getKey())) continue;
 			if(resultMap.containsKey(map.getKey())) { // 이미 있는 경우
 				resultMap.put(map.getKey(), resultMap.get(map.getKey())+1);
 			}else {

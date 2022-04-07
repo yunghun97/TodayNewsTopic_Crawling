@@ -26,10 +26,10 @@ public class NewsController {
 
 	@PostMapping("/craw")
 	public ResponseEntity<String> NewsCrawling(@RequestHeader(value = "Authorization") String auth) {
-		int count = 0;
+		double count = 0;
 		if (possibleKeyCheck(auth)) {
 			try {
-//				newsCrawlerService.crawlNews();
+				newsCrawlerService.crawlNews();
 				count = newsCrawlerService.komoran();
 				newsCrawlerService.getTF();
 				
