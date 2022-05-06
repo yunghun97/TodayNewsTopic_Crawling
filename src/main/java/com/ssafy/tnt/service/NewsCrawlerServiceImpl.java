@@ -1,8 +1,6 @@
 package com.ssafy.tnt.service;
 
 import java.io.*;
-import java.nio.file.FileSystem;
-import java.sql.Clob;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,15 +24,12 @@ import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.google.common.collect.Multiset.Entry;
-import com.ssafy.tnt.entity.NewsEntity;
 import com.ssafy.tnt.model.NewsDTO;
 
 import kr.co.shineware.nlp.komoran.constant.DEFAULT_MODEL;
 import kr.co.shineware.nlp.komoran.core.Komoran;
 import kr.co.shineware.nlp.komoran.model.KomoranResult;
 import kr.co.shineware.nlp.komoran.model.Token;
-import net.bytebuddy.asm.Advice.This;
 
 @Service
 public class NewsCrawlerServiceImpl implements NewsCrawlerService {
@@ -61,8 +56,9 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 	private KeywordService keywordService;
 	
 	@Override
-	public List<NewsDTO> crawlNews() throws Exception {		
+	public double crawlNews() throws Exception {
 		// TODO Auto-generated method stub
+		long beforeTime = System.currentTimeMillis();
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         Calendar c1 = Calendar.getInstance();
 		String strToday = sdf.format(c1.getTime());
@@ -179,6 +175,9 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 				if(content.equals("")){
 					content = news_doc.select("div#articeBody").text();
 				}
+				if(content.equals("")){
+					content = news_doc.select("div#dic_area").text();
+				}
 
 				String thumbnail_url=null;
 				if(news_doc.select("span.end_photo_org>img")!=null) {
@@ -198,9 +197,6 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 				}
 				news.setNews_origin_url(url);
 				if(news.getCategory()==null||news.getCategory().equals("")) news.setCategory("기타");
-				
-				String[] tmp = url.split("aid=");				
-				news.setId(Integer.parseInt(tmp[1]));
 				fileWriter.write(news.toString()+"\r\n");
 				newsCount++;
 				newsService.NewsInsert(news);
@@ -215,7 +211,10 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
 		fileWriter = new FileWriter(rootPath+basePath);
 		fileWriter.write(String.valueOf(newsCount));
 		fileWriter.close();
-		return null;
+		long afterTime = System.currentTimeMillis();
+		long secDiffTime = (afterTime - beforeTime)/1000; //두 시간에 차 계산
+		System.out.println("시간차이(m) : "+secDiffTime);
+		return newsCount;
 	}
 	public double komoran() throws IOException 
 	{

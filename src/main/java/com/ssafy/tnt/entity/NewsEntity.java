@@ -2,12 +2,9 @@ package com.ssafy.tnt.entity;
 
 import java.util.Date;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Lob;
-import javax.persistence.Table;
+import javax.persistence.*;
 
+import org.apache.commons.math3.analysis.function.Identity;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
@@ -21,7 +18,7 @@ import lombok.NoArgsConstructor;
 @DynamicInsert
 @DynamicUpdate
 public class NewsEntity {
-	@Id
+	@Id @GeneratedValue(strategy = GenerationType.AUTO)
 	@Column(name="news_no")
 	private long no;
 	
